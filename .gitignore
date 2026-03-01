@@ -1,6 +1,5 @@
-/.DS_Store
-genriesz_testing/
-experimentation/
-writing/
+*.DS_Store
+*.egg-info
+__pycache__/
+mypy_cache/
 data/
-results/
