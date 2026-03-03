@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle
 import seaborn as sns
 from scipy.special import expit
 from gg570_d200.auxiliary_functions.overlap_funcs import propensity_scores, overlap_measures
-from gg570_d200.auxiliary_functions.forest_riesz_func import call_forestriesz, call_forestriesz_cross
+from gg570_d200.auxiliary_functions.forest_riesz_funcs import call_forestriesz, call_forestriesz_cross
 
 
 def synthetic_data(scaled_covars, overlap_intensity, synthetic_ate, return_heterogeneity=False):
