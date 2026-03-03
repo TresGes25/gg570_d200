@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle
 import seaborn as sns
 from scipy.special import expit
 from gg570_d200.auxiliary_functions.overlap_funcs import propensity_scores, overlap_measures
-from gg570_d200.auxiliary_functions.forest_riesz_func import call_forestriesz
+from gg570_d200.auxiliary_functions.forest_riesz_func import call_forestriesz, call_forestriesz_cross
 
 
 def synthetic_data(scaled_covars, overlap_intensity, synthetic_ate, return_heterogeneity=False):
@@ -30,7 +30,7 @@ def synthetic_data(scaled_covars, overlap_intensity, synthetic_ate, return_heter
         return synthetic_y, synthetic_treat
 
 
-def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root):
+def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root, cross_validate=True):
     iterations_dict = {'overlap_intensity': np.zeros(iterations),
                        'extreme_scores': np.zeros(iterations),
                        'ess': np.zeros(iterations),
@@ -59,7 +59,7 @@ def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root):
 
     for i in range(iterations):
         if (i % print_cases == 0 or i == iterations - 1):
-            print(i+1)
+            print(i) if i >= 1 else print(i+1)
 
         overlap_intensity = np.random.uniform(0, 1) # Randomly select an overlap intensity for the synthetic data.
         
@@ -68,7 +68,10 @@ def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root):
         #plot_propensity_scores(df_scaled_synthetic, synthetic_treat, prop_scores)
         extreme_scores, ess = overlap_measures(df_scaled_synthetic, synthetic_treat, prop_scores)
 
-        riesz_estimate = call_forestriesz(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, methods)
+        if cross_validate:
+            riesz_estimate = call_forestriesz_cross(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, methods)
+        else:
+            riesz_estimate = call_forestriesz(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, methods)
 
         overlap_arr[i] = overlap_intensity
         extreme_arr[i] = extreme_scores
@@ -82,7 +85,7 @@ def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root):
 
     (root / "results").mkdir(parents=True, exist_ok=True)
     results_df = pd.DataFrame(iterations_dict)
-    results_df.to_csv(root / f"results/iterations_results.csv", index=False)
+    results_df.to_csv(root / f"results/synthetic_iterations_results.csv", index=False)
 
     return iterations_dict
 
@@ -167,4 +170,4 @@ def plot_heatmap(data_matrix, str_matrix, true_bin_i, true_bin_j, extreme_scores
     plt.show()
 
     (root / "results").mkdir(parents=True, exist_ok=True)
-    fig.savefig(root / f"results/overlap_heatmap.png", dpi=500, bbox_inches='tight')
+    fig.savefig(root / f"results/synthetic_overlap_heatmap.png", dpi=500, bbox_inches='tight')
