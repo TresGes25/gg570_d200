@@ -60,7 +60,7 @@ def call_forestriesz(df, covariate_cols, treatment_col, outcome_col, methods, re
         return results
 
 
-def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, methods):
+def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, methods, return_est=False):
     covariates = df[covariate_cols].values
     treat = df[treatment_col].values
     outcome = df[outcome_col].values
@@ -68,7 +68,8 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
     kf = KFold(n_splits=3, shuffle=True, random_state=21)
     
     fold_results = {method: {'est': [], 'low': [], 'high': []} for method in methods}
-    
+    est_list = []
+
     for train_idx, test_idx in kf.split(covariates):
         X_train, X_test = covariates[train_idx], covariates[test_idx]
         treat_train, treat_test = treat[train_idx], treat[test_idx]
@@ -81,6 +82,7 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
                             honest=True, verbose=0, n_jobs=-2, random_state=21)
         
         est.fit(X_train, treat_train, y_train)
+        est_list.append(est)
         
         pred_data = np.column_stack([treat_test, X_test])
         
@@ -102,4 +104,8 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
             'p_val': calculate_p_value(mean, low, high)
         }
     
-    return results
+    if return_est:
+        return results, est_list
+    else:
+        return results
+    
