@@ -11,7 +11,7 @@ def propensity_scores(df, covariate_cols, treatment_col):
     return prop_scores
 
 
-def plot_propensity_scores(df, treatment_col, prop_score_col):
+def plot_propensity_scores(df, treatment_col, prop_score_col, root):
     plt.figure(figsize=(10, 6))
 
     treated = df[df[treatment_col] == 1][prop_score_col]
@@ -25,6 +25,10 @@ def plot_propensity_scores(df, treatment_col, prop_score_col):
     plt.xticks(np.arange(0, 1.1, 0.1))
     plt.legend()
     plt.title('Propensity Score Densities (by Treatment Status)')
+
+    (root / "results").mkdir(parents=True, exist_ok=True)
+    plt.savefig(root / f"results/true_overlap.png", dpi=500, bbox_inches='tight')
+
     plt.show()
 
 
