@@ -65,12 +65,12 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
     treat = df[treatment_col].values
     outcome = df[outcome_col].values
     
-    kf = KFold(n_splits=3, shuffle=True, random_state=21)
+    folds = KFold(n_splits=3, shuffle=True, random_state=21)
     
     fold_results = {method: {'est': [], 'low': [], 'high': []} for method in methods}
     est_list = []
 
-    for train_idx, test_idx in kf.split(covariates):
+    for train_idx, test_idx in folds.split(covariates):
         X_train, X_test = covariates[train_idx], covariates[test_idx]
         treat_train, treat_test = treat[train_idx], treat[test_idx]
         y_train, y_test = outcome[train_idx], outcome[test_idx]
@@ -94,9 +94,17 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
     
     results = {}
     for method in methods:
-        mean = np.mean(fold_results[method]['est'])
-        low = np.mean(fold_results[method]['low'])
-        high = np.mean(fold_results[method]['high'])
+        means = np.array(fold_results[method]['est'])
+        lows = np.array(fold_results[method]['low'])
+        highs = np.array(fold_results[method]['high'])
+        std_errors = (highs - lows) / (2 * 1.96)
+        pooled_var = np.mean(std_errors**2) + np.var(means, ddof=1)
+        pooled_std_error = np.sqrt(pooled_var)
+
+        mean = np.mean(means)
+        low = mean - 1.96*pooled_std_error
+        high = mean + 1.96*pooled_std_error
+
         results[method] = {
             'est': mean,
             'low': low,
