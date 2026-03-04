@@ -29,15 +29,7 @@ def call_forestriesz(df, covariate_cols, treatment_col, outcome_col, methods, re
                          min_var_fraction_leaf=0.001, min_var_leaf_on_val=True,
                          min_impurity_decrease = 0.01, max_depth=None,
                          warm_start=False, inference=True, subforest_size=2,
-                         honest=True, verbose=0, n_jobs=-2, random_state=21)
-    
-    """
-    est = ForestRieszATE(criterion='mse', n_estimators=100, min_samples_leaf=2,
-                         min_var_fraction_leaf=0.001, min_var_leaf_on_val=True,
-                         min_impurity_decrease = 0.01, max_samples=.8, max_depth=None,
-                         warm_start=False, inference=False, subforest_size=1,
-                         honest=True, verbose=0, n_jobs=-2, random_state=21)
-    """
+                         honest=True, verbose=0, n_jobs=1, random_state=21)
 
     est.fit(covariates, treat, outcome)
 
@@ -69,20 +61,22 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
     
     fold_results = {method: {'est': [], 'low': [], 'high': []} for method in methods}
     est_list = []
+    test_id_list = []
 
-    for train_idx, test_idx in folds.split(covariates):
-        X_train, X_test = covariates[train_idx], covariates[test_idx]
-        treat_train, treat_test = treat[train_idx], treat[test_idx]
-        y_train, y_test = outcome[train_idx], outcome[test_idx]
+    for train_id, test_id in folds.split(covariates):
+        X_train, X_test = covariates[train_id], covariates[test_id]
+        treat_train, treat_test = treat[train_id], treat[test_id]
+        y_train, y_test = outcome[train_id], outcome[test_id]
         
         est = ForestRieszATE(criterion='mse', n_estimators=100, min_samples_leaf=2,
                             min_var_fraction_leaf=0.001, min_var_leaf_on_val=True,
                             min_impurity_decrease = 0.01, max_depth=None,
                             warm_start=False, inference=True, subforest_size=2,
-                            honest=True, verbose=0, n_jobs=-2, random_state=21)
+                            honest=True, verbose=0, n_jobs=1, random_state=21)
         
         est.fit(X_train, treat_train, y_train)
         est_list.append(est)
+        test_id_list.append(test_id)
         
         pred_data = np.column_stack([treat_test, X_test])
         
@@ -113,7 +107,7 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
         }
     
     if return_est:
-        return results, est_list
+        return results, est_list, test_id_list
     else:
         return results
     

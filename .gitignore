@@ -2,4 +2,5 @@
 *.egg-info
 __pycache__/
 mypy_cache/
-data/
+data/apsp_o24s25_eul_pwta22.dta
+.vscode/

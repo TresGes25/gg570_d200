@@ -55,11 +55,14 @@ def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root, c
     
     methods = ['dr', 'plugin']
 
-    print_cases = max(1, iterations // 10)
+    print_cases = max(1, int(np.ceil(iterations / 10)))
 
     for i in range(iterations):
-        if (i % print_cases == 0 or i == iterations - 1):
-            print(i) if i >= 1 else print(i+1)
+        iter_num = i + 1
+        if iterations < 9:
+            print(iter_num)
+        elif iter_num == 1 or iter_num == iterations or iter_num % print_cases == 0:
+            print(iter_num)
 
         overlap_intensity = np.random.uniform(0, 1) # Randomly select an overlap intensity for the synthetic data.
         
