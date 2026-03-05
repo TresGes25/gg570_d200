@@ -43,6 +43,7 @@ def forest_riesz_gate_cross(df, covariate_cols, treatment_col, outcome_col, est_
     return([mean, low, high, p_val])
 
 
+"""
 def causal_dml_gate(df, covariate_cols, treatment_col, outcome_col, est_list, test_id_list, mask):
     gates = []
     std_errors = []
@@ -84,3 +85,4 @@ def causal_dml_gate(df, covariate_cols, treatment_col, outcome_col, est_list, te
     p_val = calculate_p_value(mean, low, high)
 
     return([mean, low, high, p_val])
+"""
