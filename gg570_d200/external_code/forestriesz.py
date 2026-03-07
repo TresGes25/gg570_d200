@@ -79,7 +79,7 @@ class ForestRieszATE(BaseGRF):
     def _translate(self, point, X):
         T = X[:, 0].astype(int)
         riesz = point[:, 1] * T + point[:, 0] * (1 - T)
-        reg = point[:, 2] * T + point[:, 3] * (1 - T)
+        reg = point[:, 2] * T + point[:, 3]
         return riesz, reg
 
     def _moment_fn(self, x, test_fn):
