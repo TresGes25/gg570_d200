@@ -30,7 +30,7 @@ def synthetic_data(scaled_covars, overlap_intensity, synthetic_ate, return_heter
         return synthetic_y, synthetic_treat
 
 
-def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root, cross_validate=True):
+def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root, cross_fit=True):
     iterations_dict = {'overlap_intensity': np.zeros(iterations),
                        'extreme_scores': np.zeros(iterations),
                        'ess': np.zeros(iterations),
@@ -71,20 +71,24 @@ def synthetic_loop(df_scaled, covariate_cols, iterations, synthetic_ate, root, c
         #plot_propensity_scores(df_scaled_synthetic, synthetic_treat, prop_scores)
         extreme_scores, ess = overlap_measures(df_scaled_synthetic, synthetic_treat, prop_scores)
 
-        if cross_validate:
-            riesz_estimate = call_forestriesz_cross(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, methods)
+        if cross_fit:
+            riesz_estimate_dr = call_forestriesz_cross(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, ['dr'])
+            dr_est[i] = riesz_estimate_dr['dr']['est']
+            dr_ci[i] = int(riesz_estimate_dr['dr']['low'] <= synthetic_ate <= riesz_estimate_dr['dr']['high'])
+
+            riest_estimate_plugin = call_forestriesz(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, ['plugin'])
+            plugin_est[i] = riest_estimate_plugin['plugin']['est']
+            plugin_ci[i] = int(riest_estimate_plugin['plugin']['low'] <= synthetic_ate <= riest_estimate_plugin['plugin']['high'])
         else:
             riesz_estimate = call_forestriesz(df_scaled_synthetic, covariate_cols, synthetic_treat, synthetic_y, methods)
-
+            dr_est[i] = riesz_estimate['dr']['est']
+            dr_ci[i] = int(riesz_estimate['dr']['low'] <= synthetic_ate <= riesz_estimate['dr']['high'])
+            plugin_est[i] = riesz_estimate['plugin']['est']
+            plugin_ci[i] = int(riesz_estimate['plugin']['low'] <= synthetic_ate <= riesz_estimate['plugin']['high'])
+        
         overlap_arr[i] = overlap_intensity
         extreme_arr[i] = extreme_scores
         ess_arr[i] = ess
-        
-        dr_est[i] = riesz_estimate['dr']['est']
-        dr_ci[i] = int(riesz_estimate['dr']['low'] <= synthetic_ate <= riesz_estimate['dr']['high'])
-        
-        plugin_est[i] = riesz_estimate['plugin']['est']
-        plugin_ci[i] = int(riesz_estimate['plugin']['low'] <= synthetic_ate <= riesz_estimate['plugin']['high'])
 
     (root / "results").mkdir(parents=True, exist_ok=True)
     results_df = pd.DataFrame(iterations_dict)
