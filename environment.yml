@@ -6,8 +6,10 @@ dependencies:
   - python==3.11.0
   - matplotlib==3.10.7
   - scikit-learn==1.5.2
-  - xgboost==3.2.0
   - pandas==3.0.1
   - ipykernel==7.2.0
   - econml==0.15.1
   - seaborn==0.13.2
+  - numpy==1.26.4
+  - scipy==1.17.0
+  - statsmodels==0.14.6

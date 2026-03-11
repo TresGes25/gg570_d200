@@ -5,7 +5,7 @@ from gg570_d200.auxiliary_functions.forest_riesz_funcs import calculate_p_value
 from gg570_d200.external_code.forestriesz import ForestRieszATE
 
 
-BoolMask = npt.NDArray[np.bool_] | pd.Series
+boolean_mask = npt.NDArray[np.bool_] | pd.Series
 
 
 def forest_riesz_gate(
@@ -14,7 +14,7 @@ def forest_riesz_gate(
     treatment_col: str,
     outcome_col: str,
     est: ForestRieszATE,
-    mask: BoolMask,
+    mask: boolean_mask,
 ) -> list[float]:
     """
     Function that estimates a GATE from a fitted ForestRieszATE estimator,
@@ -31,7 +31,7 @@ def forest_riesz_gate(
         Outcome column name.
     est: ForestRieszATE
         Fitted ForestRieszATE estimator.
-    mask: BoolMask
+    mask: boolean_mask
         Boolean mask for the subgroup.
 
     Returns:
@@ -40,6 +40,8 @@ def forest_riesz_gate(
     """
     group = df.loc[mask, [treatment_col] + covariate_cols].values
     y_group = df.loc[mask, outcome_col].values
+    # 'dr' refers to the method simply denoted 'ForestRiesz' in the report,
+    # as it is the standard implementation considered by Chernozhukov et al. (2021).
     ate_result = est.predict_ate(group, y_group, method='dr')
     p_val = calculate_p_value(ate_result[0], ate_result[1], ate_result[2])
     ate_result = list(ate_result)
@@ -55,7 +57,7 @@ def forest_riesz_gate_cross(
     outcome_col: str,
     est_list: list[ForestRieszATE],
     test_id_list: list[npt.NDArray[np.intp]],
-    mask: BoolMask,
+    mask: boolean_mask,
 ) -> list[float]:
     """
     Function that estimates a cross-fitted GATE from a
@@ -76,7 +78,7 @@ def forest_riesz_gate_cross(
         Fold-specific fitted estimators.
     test_id_list: list[npt.NDArray[np.intp]]
         Fold test indices aligned with est_list.
-    mask: BoolMask
+    mask: boolean_mask
         Boolean mask for the subgroup.
 
     Returns:
