@@ -125,7 +125,6 @@ def prepare_heatmap(iterations_dict, synthetic_ate, true_extreme_scores_perc, tr
             indices = np.where(mask)[0]
             
             if len(indices) > 0:
-                # Subset arrays once for efficiency
                 dr_subset = dr_estimates[indices]
                 plugin_subset = plugin_estimates[indices]
                 

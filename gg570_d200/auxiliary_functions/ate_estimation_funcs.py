@@ -43,6 +43,12 @@ def forest_riesz_gate_cross(df, covariate_cols, treatment_col, outcome_col, est_
     return([mean, low, high, p_val])
 
 
+def add_std_error_from_ci(df, high_col, low_col):
+    df_out = df.copy()
+    df_out['std_error'] = (df_out[high_col] - df_out[low_col]) / (2 * 1.96)
+    return df_out
+
+
 """
 def causal_dml_gate(df, covariate_cols, treatment_col, outcome_col, est_list, test_id_list, mask):
     gates = []
