@@ -1,8 +1,43 @@
 import numpy as np
+import numpy.typing as npt
+import pandas as pd
 from gg570_d200.auxiliary_functions.forest_riesz_funcs import calculate_p_value
+from gg570_d200.external_code.forestriesz import ForestRieszATE
 
 
-def forest_riesz_gate(df, covariate_cols, treatment_col, outcome_col, est, mask):
+BoolMask = npt.NDArray[np.bool_] | pd.Series
+
+
+def forest_riesz_gate(
+    df: pd.DataFrame,
+    covariate_cols: list[str],
+    treatment_col: str,
+    outcome_col: str,
+    est: ForestRieszATE,
+    mask: BoolMask,
+) -> list[float]:
+    """
+    Function that estimates a GATE from a fitted ForestRieszATE estimator,
+    given a boolean mask.
+
+    Parameters:
+    df: pd.DataFrame
+        Input data.
+    covariate_cols: list[str]
+        Covariate column names.
+    treatment_col: str
+        Treatment column name.
+    outcome_col: str
+        Outcome column name.
+    est: ForestRieszATE
+        Fitted ForestRieszATE estimator.
+    mask: BoolMask
+        Boolean mask for the subgroup.
+
+    Returns:
+    list[float]
+        [estimate, ci_low, ci_high, p_value].
+    """
     group = df.loc[mask, [treatment_col] + covariate_cols].values
     y_group = df.loc[mask, outcome_col].values
     ate_result = est.predict_ate(group, y_group, method='dr')
@@ -13,13 +48,49 @@ def forest_riesz_gate(df, covariate_cols, treatment_col, outcome_col, est, mask)
     return(ate_result)
 
 
-def forest_riesz_gate_cross(df, covariate_cols, treatment_col, outcome_col, est_list, test_id_list, mask):
+def forest_riesz_gate_cross(
+    df: pd.DataFrame,
+    covariate_cols: list[str],
+    treatment_col: str,
+    outcome_col: str,
+    est_list: list[ForestRieszATE],
+    test_id_list: list[npt.NDArray[np.intp]],
+    mask: BoolMask,
+) -> list[float]:
+    """
+    Function that estimates a cross-fitted GATE from a
+    list of fitted ForestRieszATE estimators (one per fold)
+    and their corresponding test indices,
+    given a boolean mask.
+
+    Parameters:
+    df: pd.DataFrame
+        Input data.
+    covariate_cols: list[str]
+        Covariate column names.
+    treatment_col: str
+        Treatment column name.
+    outcome_col: str
+        Outcome column name.
+    est_list: list[ForestRieszATE]
+        Fold-specific fitted estimators.
+    test_id_list: list[npt.NDArray[np.intp]]
+        Fold test indices aligned with est_list.
+    mask: BoolMask
+        Boolean mask for the subgroup.
+
+    Returns:
+    list[float]
+        [pooled_estimate, ci_low, ci_high, p_value].
+    """
     means, lows, highs = [], [], []
 
     for est, test_id in zip(est_list, test_id_list):
         fold_mask = np.zeros(len(df), dtype=bool)
         fold_mask[test_id] = True
         effective_mask = mask & fold_mask
+        # The effective mask ensures that those in the current fold and
+        # satisfying the subgroup/mask condition are selected.
 
         group = df.loc[effective_mask, [treatment_col] + covariate_cols].values
         y_group = df.loc[effective_mask, outcome_col].values
@@ -43,52 +114,27 @@ def forest_riesz_gate_cross(df, covariate_cols, treatment_col, outcome_col, est_
     return([mean, low, high, p_val])
 
 
-def add_std_error_from_ci(df, high_col, low_col):
+def add_std_error_from_ci(
+    df: pd.DataFrame,
+    high_col: str,
+    low_col: str,
+) -> pd.DataFrame:
+    """
+    Function that adds standard errors derived from 
+    a DF with confidence interval bounds per observation.
+
+    Parameters:
+    df: pd.DataFrame
+        Input dataframe.
+    high_col: str
+        Upper CI bound column name.
+    low_col: str
+        Lower CI bound column name.
+
+    Returns:
+    pd.DataFrame
+        Copy of ``df`` with added ``std_error`` column.
+    """
     df_out = df.copy()
     df_out['std_error'] = (df_out[high_col] - df_out[low_col]) / (2 * 1.96)
     return df_out
-
-
-"""
-def causal_dml_gate(df, covariate_cols, treatment_col, outcome_col, est_list, test_id_list, mask):
-    gates = []
-    std_errors = []
-
-    for i, test_id in enumerate(test_id_list):
-        fold_mask = np.zeros(len(df), dtype=bool)
-        fold_mask[test_id] = True
-        effective_mask = mask & fold_mask
-        
-        X = df.iloc[test_id][covariate_cols].values
-        T = df.iloc[test_id][treatment_col].values
-        y = df.iloc[test_id][outcome_col].values
-
-        res_y_all = y - est_list.models_y[0][i].predict(X)
-        res_t_all = T - est_list.models_t[0][i].predict(X)
-
-        effective_id = effective_mask[test_id]
-        res_y = res_y_all[effective_id]
-        res_t = res_t_all[effective_id]
-
-        gate = np.mean(res_y * res_t) / np.mean(res_t**2)
-        
-        influence_func = res_t * (res_y - gate * res_t)
-        gate_var = np.var(influence_func, ddof=1) / (len(res_t) * (np.mean(res_t**2))**2)
-        gate_std_errors = np.sqrt(gate_var)
-        
-        gates.append(gate)
-        std_errors.append(gate_std_errors)
-
-    gates = np.array(gates)
-    std_errors = np.array(std_errors)
-    
-    pooled_var = np.mean(std_errors**2) + np.var(gates, ddof=1)
-    pooled_se = np.sqrt(pooled_var)
-
-    mean = np.mean(gates)
-    low = mean - 1.96*pooled_se
-    high = mean + 1.96*pooled_se
-    p_val = calculate_p_value(mean, low, high)
-
-    return([mean, low, high, p_val])
-"""

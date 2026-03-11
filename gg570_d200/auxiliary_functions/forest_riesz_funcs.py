@@ -1,10 +1,35 @@
 import numpy as np
+import numpy.typing as npt
+import pandas as pd
 from scipy import stats
 from sklearn.model_selection import KFold
 from gg570_d200.external_code.forestriesz import ForestRieszATE
 
 
-def calculate_p_value(coef_estimate, ci_lower, ci_upper, alpha=0.05):    
+def calculate_p_value(
+    coef_estimate: float,
+    ci_lower: float,
+    ci_upper: float,
+    alpha: float = 0.05,
+) -> float:
+    """
+    Function that computes a p-value from
+    an estimate and confidence interval bounds.
+
+    Parameters:
+    coef_estimate: float
+        Point estimate.
+    ci_lower: float
+        Lower confidence interval bound.
+    ci_upper: float
+        Upper confidence interval bound.
+    alpha: float
+        Significance level used for CI construction.
+
+    Returns:
+    float
+        Two-sided p-value.
+    """
     if ci_lower <= 0 <= ci_upper:
         return 1.0 if coef_estimate == 0 else 2 * (1 - stats.norm.cdf(abs(coef_estimate) / ((ci_upper - ci_lower) / (2 * stats.norm.ppf(1 - alpha/2)))))
     
@@ -20,7 +45,36 @@ def calculate_p_value(coef_estimate, ci_lower, ci_upper, alpha=0.05):
     return p_value
 
 
-def call_forestriesz(df, covariate_cols, treatment_col, outcome_col, methods, return_est=False):
+def call_forestriesz(
+    df: pd.DataFrame,
+    covariate_cols: list[str],
+    treatment_col: str,
+    outcome_col: str,
+    methods: list[str],
+    return_est: bool = False,
+) -> dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], ForestRieszATE]:
+    """
+    Function that fits ForestRieszATE on the full sample
+    and computes ATE estimates for each requested method.
+
+    Parameters:
+    df: pd.DataFrame
+        Input data.
+    covariate_cols: list[str]
+        Covariate column names.
+    treatment_col: str
+        Treatment column name.
+    outcome_col: str
+        Outcome column name.
+    methods: list[str]
+        Methods passed to ``predict_ate``.
+    return_est: bool
+        Whether to also return the fitted estimator.
+
+    Returns:
+    dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], ForestRieszATE]
+        Method-wise results, optionally with fitted estimator.
+    """
     covariates = df[covariate_cols].values
     treat = df[treatment_col].values
     outcome = df[outcome_col].values
@@ -30,12 +84,14 @@ def call_forestriesz(df, covariate_cols, treatment_col, outcome_col, methods, re
                          min_impurity_decrease = 0.01, max_depth=None,
                          warm_start=False, inference=True, subforest_size=2,
                          honest=True, verbose=0, n_jobs=1, random_state=21)
+    # Identical hyperparameters to those used in cross-fitting and in CausalForestDML.
 
     est.fit(covariates, treat, outcome)
 
     pred_data = df[[treatment_col] + covariate_cols].values
     
     results = {}
+    # Methods are usually 'dr' and/or 'plugin'
     for method in methods:
         ate = est.predict_ate(pred_data, outcome, method=method)
         # ate = tuple((np.asarray(ate, dtype=float) * y_scaler.scale_[0]).tolist())
@@ -52,17 +108,56 @@ def call_forestriesz(df, covariate_cols, treatment_col, outcome_col, methods, re
         return results
 
 
-def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, methods, return_est=False):
+def call_forestriesz_cross(
+    df: pd.DataFrame,
+    covariate_cols: list[str],
+    treatment_col: str,
+    outcome_col: str,
+    methods: list[str],
+    return_est: bool = False,
+) -> (
+    dict[str, dict[str, float]]
+    | tuple[
+        dict[str, dict[str, float]],
+        list[ForestRieszATE],
+        list[npt.NDArray[np.intp]],
+    ]
+):
+    """
+    Function that fits ForestRieszATE with 3-fold cross-fitting
+    and pools ATE estimates for each method.
+
+    Parameters:
+    df: pd.DataFrame
+        Input data.
+    covariate_cols: list[str]
+        Covariate column names.
+    treatment_col: str
+        Treatment column name.
+    outcome_col: str
+        Outcome column name.
+    methods: list[str]
+        Methods passed to ``predict_ate``.
+    return_est: bool
+        Whether to also return fold estimators and fold test indices.
+
+    Returns:
+    dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], list[ForestRieszATE], list[npt.NDArray[np.intp]]]
+        Per-method pooled results, optionally with fold estimators and test indices.
+    """
     covariates = df[covariate_cols].values
     treat = df[treatment_col].values
     outcome = df[outcome_col].values
     
     folds = KFold(n_splits=3, shuffle=True, random_state=21)
+    # Identical folds and random state as those used to call CausalForestDML.
     
     fold_results = {method: {'est': [], 'low': [], 'high': []} for method in methods}
     est_list = []
     test_id_list = []
 
+    # Fitting on training data and predicting on test data for each fold,
+    # then pooling results across folds per method.
     for train_id, test_id in folds.split(covariates):
         X_train, X_test = covariates[train_id], covariates[test_id]
         treat_train, treat_test = treat[train_id], treat[test_id]
@@ -94,10 +189,12 @@ def call_forestriesz_cross(df, covariate_cols, treatment_col, outcome_col, metho
         std_errors = (highs - lows) / (2 * 1.96)
         pooled_var = np.mean(std_errors**2) + np.var(means, ddof=1)
         pooled_std_error = np.sqrt(pooled_var)
+        # Pooled standard errors are computed to aggregate
+        # within-fold standard errors and between-fold estimate variability.
 
         mean = np.mean(means)
-        low = mean - 1.96*pooled_std_error
-        high = mean + 1.96*pooled_std_error
+        low = mean - 1.96 * pooled_std_error
+        high = mean + 1.96 * pooled_std_error
 
         results[method] = {
             'est': mean,
