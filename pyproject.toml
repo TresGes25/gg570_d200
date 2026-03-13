@@ -5,16 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gg570_d200"
 version = "0.1.0"
-description = ""
+description = "A Python package facilitating the replication of 'Training Employees to Love Their Job? A Forest-Based Analysis of Job Training and Underemployment in the UK' (Gonzalez Galvan, 2026)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-
-]
-
-[project.optional-dependencies]
-dev = [
-
+    "matplotlib",
+    "scikit-learn",
+    "pandas",
+    "ipykernel",
+    "econml",
+    "seaborn",
+    "numpy",
+    "scipy",
+    "statsmodels",
 ]
 
 [tool.setuptools]
