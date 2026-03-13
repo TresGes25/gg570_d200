@@ -6,7 +6,7 @@
 
 ## Environment setup and package installation
 
-* In your terminal:
+* In your terminal, from the project root:
 1. `conda env create -f environment.yml` to create the conda environment.
 2. `conda activate gg570_d200` to activate the environment. Select the corresponding kernel within your IDE.
 3. `pip install -e .` to install the gg570_d200 package in editable mode.
